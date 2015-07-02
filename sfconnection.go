@@ -10,12 +10,13 @@ import "fmt"
 import "strconv"
 import "bufio"
 import "io"
-import "io/ioutil"
 import "log"
 import "time"
 import "errors"
 import "sync"
 import "sync/atomic"
+
+import "github.com/proactivity-lab/go-loggers"
 
 type Packet interface {
 	Serialize() ([]byte, error)
@@ -29,6 +30,8 @@ type PacketFactory interface {
 }
 
 type SfConnection struct {
+    loggers.DIWEloggers
+
 	Host string
 	Port int
 
@@ -48,14 +51,11 @@ type SfConnection struct {
 
 	watchdog chan bool
 	closed   chan bool
-
-	dbglog *log.Logger
-	errlog *log.Logger
 }
 
 func (self *SfConnection) runErrorHandler(err error) error {
 	if err != io.EOF && err != io.ErrUnexpectedEOF {
-		self.errlog.Printf("%s\n", err)
+		self.Error.Printf("%s\n", err)
 	}
 	return err
 }
@@ -114,7 +114,7 @@ func (self *SfConnection) notifyWatchdog(outcome bool) {
 	select {
 	case self.watchdog <- outcome:
 	case <-time.After(time.Second):
-		self.dbglog.Printf("No watchdog?\n")
+		self.Debug.Printf("No watchdog?\n")
 	}
 }
 
@@ -122,14 +122,14 @@ func (self *SfConnection) connectWatchdog(timeout time.Duration, conn net.Conn) 
 	select {
 	case v := <-self.watchdog:
 		if v {
-			self.dbglog.Printf("Watchdog stop.\n")
+			self.Debug.Printf("Watchdog stop.\n")
 			return
 		} else {
-			self.dbglog.Printf("Watchdog interrupt.\n")
+			self.Debug.Printf("Watchdog interrupt.\n")
 			conn.Close()
 		}
 	case <-time.After(timeout):
-		self.dbglog.Printf("Timeout.\n")
+		self.Debug.Printf("Timeout.\n")
 		conn.Close()
 	}
 }
@@ -150,7 +150,7 @@ func (self *SfConnection) connect(delay time.Duration) error {
 
 	constring := self.Host + ":" + strconv.Itoa(self.Port)
 
-	self.dbglog.Printf("Dialing %s\n", constring)
+	self.Debug.Printf("Dialing %s\n", constring)
 	conn, err := net.Dial("tcp", constring)
 	if err != nil {
 		return self.connectErrorHandler(conn, err)
@@ -174,7 +174,7 @@ func (self *SfConnection) connect(delay time.Duration) error {
 			self.conn = conn
 			self.connbuf = connbuf
 
-			self.dbglog.Printf("Connection established.\n")
+			self.Debug.Printf("Connection established.\n")
 
 			go self.read()
 			go self.run()
@@ -213,22 +213,22 @@ func (self *SfConnection) run() {
 	for {
 		select {
 		case msg := <-self.incoming:
-			self.dbglog.Printf("RCV(%d): %X\n", len(msg), msg)
+			self.Debug.Printf("RCV(%d): %X\n", len(msg), msg)
 			if len(msg) > 0 {
 				if dispatcher, ok := self.dispatchers[msg[0]]; ok {
 					dispatcher.Receive(msg)
 				} else {
-					self.errlog.Printf("No dispatcher for %d!\n", msg[0])
+					self.Error.Printf("No dispatcher for %d!\n", msg[0])
 				}
 			}
 		case msg := <-self.outgoing:
 			length := make([]byte, 1)
 			length[0] = byte(len(msg))
-			self.dbglog.Printf("SND(%d): %X\n", length[0], msg)
+			self.Debug.Printf("SND(%d): %X\n", length[0], msg)
 			self.conn.Write(length)
 			self.conn.Write(msg)
 		case <-self.closed:
-			self.dbglog.Printf("Connection closed.\n")
+			self.Debug.Printf("Connection closed.\n")
 			self.connectlock.Lock()
 			defer self.connectlock.Unlock()
 
@@ -261,17 +261,16 @@ func (self *SfConnection) AddDispatcher(dispatcher Dispatcher) error {
 }
 
 func (self *SfConnection) SetDebugLogger(logger *log.Logger) {
-	self.dbglog = logger
+	self.Debug = logger
 }
 
 func (self *SfConnection) SetErrorLogger(logger *log.Logger) {
-	self.errlog = logger
+	self.Error = logger
 }
 
 func NewSfConnection() *SfConnection {
 	sfc := new(SfConnection)
-	sfc.dbglog = log.New(ioutil.Discard, "", 0)
-	sfc.errlog = log.New(ioutil.Discard, "", 0)
+	sfc.InitLoggers()
 	sfc.dispatchers = make(map[byte]Dispatcher)
 	sfc.outgoing = make(chan []byte)
 	sfc.incoming = make(chan []byte)
