@@ -1,2 +1,2 @@
-# go-sf-connection
+# go-sfconnection
 Serialforwarder connection library for go.
