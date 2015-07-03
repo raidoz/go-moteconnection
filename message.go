@@ -9,22 +9,22 @@ import "errors"
 import "fmt"
 
 type Message struct {
-	destination uint16
-	source      uint16
+	destination AMAddr
+	source      AMAddr
 	sourceSet   bool
-	group       uint8
+	group       AMGroup
 	groupSet    bool
-	ptype       uint8
+	ptype       AMID
 	Payload     []byte
 
-	defaultSource uint16
-	defaultGroup  uint8
+	defaultSource AMAddr
+	defaultGroup  AMGroup
 }
 
 var _ Packet = (*Message)(nil)
 var _ PacketFactory = (*Message)(nil)
 
-func NewMessageFactory(defaultGroup uint8, defaultSource uint16) *Message {
+func NewMessageFactory(defaultGroup AMGroup, defaultSource AMAddr) *Message {
 	msg := new(Message)
 	msg.defaultGroup = defaultGroup
 	msg.defaultSource = defaultSource
@@ -39,42 +39,42 @@ func (self *Message) New() Packet {
 	return msg
 }
 
-func (self *Message) Type() byte {
+func (self *Message) Type() AMID {
 	return self.ptype
 }
 
-func (self *Message) SetType(ptype byte) {
+func (self *Message) SetType(ptype AMID) {
 	self.ptype = ptype
 }
 
-func (self *Message) Group() byte {
+func (self *Message) Group() AMGroup {
 	if self.groupSet {
 		return self.group
 	}
 	return self.defaultGroup
 }
 
-func (self *Message) SetGroup(group byte) {
+func (self *Message) SetGroup(group AMGroup) {
 	self.groupSet = true
 	self.group = group
 }
 
-func (self *Message) Destination() uint16 {
+func (self *Message) Destination() AMAddr {
 	return self.destination
 }
 
-func (self *Message) SetDestination(destination uint16) {
+func (self *Message) SetDestination(destination AMAddr) {
 	self.destination = destination
 }
 
-func (self *Message) Source() uint16 {
+func (self *Message) Source() AMAddr {
 	if self.sourceSet {
 		return self.source
 	}
 	return self.defaultSource
 }
 
-func (self *Message) SetSource(source uint16) {
+func (self *Message) SetSource(source AMAddr) {
 	self.sourceSet = true
 	self.source = source
 }
@@ -133,11 +133,11 @@ func (self *Message) Deserialize(data []byte) error {
 	var err error
 
 	var dispatch uint8
-	var destination uint16
-	var source uint16
+	var destination AMAddr
+	var source AMAddr
 	var length uint8
-	var group uint8
-	var ptype uint8
+	var group AMGroup
+	var ptype AMID
 
 	buf := bytes.NewReader(data)
 

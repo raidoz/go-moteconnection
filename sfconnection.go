@@ -10,7 +10,6 @@ import "fmt"
 import "strconv"
 import "bufio"
 import "io"
-import "log"
 import "time"
 import "errors"
 import "sync"
@@ -21,8 +20,6 @@ import "github.com/proactivity-lab/go-loggers"
 type Packet interface {
 	Serialize() ([]byte, error)
 	Deserialize([]byte) error
-
-	Type() byte
 }
 
 type PacketFactory interface {
@@ -30,10 +27,10 @@ type PacketFactory interface {
 }
 
 type SfConnection struct {
-    loggers.DIWEloggers
+	loggers.DIWEloggers
 
 	Host string
-	Port int
+	Port uint16
 
 	connectlock   sync.Mutex
 	shouldconnect bool
@@ -55,7 +52,7 @@ type SfConnection struct {
 
 func (self *SfConnection) runErrorHandler(err error) error {
 	if err != io.EOF && err != io.ErrUnexpectedEOF {
-		self.Error.Printf("%s\n", err)
+		self.Debug.Printf("%s\n", err)
 	}
 	return err
 }
@@ -87,18 +84,20 @@ func (self *SfConnection) Disconnect() {
 	}
 }
 
-func (self *SfConnection) Connect(host string, port int) error {
+func (self *SfConnection) Connect(host string, port uint16) error {
 	self.connectlock.Lock()
-	defer self.connectlock.Unlock()
 
 	self.Host = host
 	self.Port = port
 	self.shouldconnect = true
 	self.autoconnect = false
+
+	self.connectlock.Unlock()
+
 	return self.connect(0)
 }
 
-func (self *SfConnection) Autoconnect(host string, port int, period time.Duration) {
+func (self *SfConnection) Autoconnect(host string, port uint16, period time.Duration) {
 	self.connectlock.Lock()
 	defer self.connectlock.Unlock()
 
@@ -148,7 +147,7 @@ func (self *SfConnection) connect(delay time.Duration) error {
 		return errors.New("Connect interrupted.")
 	}
 
-	constring := self.Host + ":" + strconv.Itoa(self.Port)
+	constring := self.Host + ":" + strconv.Itoa(int(self.Port))
 
 	self.Debug.Printf("Dialing %s\n", constring)
 	conn, err := net.Dial("tcp", constring)
@@ -250,22 +249,14 @@ func (self *SfConnection) Send(msg Packet) error {
 	select {
 	case self.outgoing <- serialized:
 		return nil
-	default:
+	case <-time.After(50 * time.Millisecond): // Because the run goroutine might be doing something other than reading self.outgoing at this very moment
+		return errors.New("Not connected!")
 	}
-	return errors.New("Not connected!")
 }
 
 func (self *SfConnection) AddDispatcher(dispatcher Dispatcher) error {
 	self.dispatchers[dispatcher.Header()] = dispatcher
 	return nil
-}
-
-func (self *SfConnection) SetDebugLogger(logger *log.Logger) {
-	self.Debug = logger
-}
-
-func (self *SfConnection) SetErrorLogger(logger *log.Logger) {
-	self.Error = logger
 }
 
 func NewSfConnection() *SfConnection {
