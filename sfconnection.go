@@ -18,12 +18,19 @@ import "sync/atomic"
 import "github.com/proactivity-lab/go-loggers"
 
 type Packet interface {
+	Dispatch() byte
 	Serialize() ([]byte, error)
 	Deserialize([]byte) error
 }
 
 type PacketFactory interface {
-	New() Packet
+	Dispatch() byte
+	NewPacket() Packet
+}
+
+type Dispatcher interface {
+	Dispatch() byte
+	Receive([]byte) error
 }
 
 type SfConnection struct {
@@ -149,7 +156,7 @@ func (self *SfConnection) connect(delay time.Duration) error {
 
 	constring := self.Host + ":" + strconv.Itoa(int(self.Port))
 
-	self.Debug.Printf("Dialing %s\n", constring)
+	self.Info.Printf("Connecting to %s\n", constring)
 	conn, err := net.Dial("tcp", constring)
 	if err != nil {
 		return self.connectErrorHandler(conn, err)
@@ -173,7 +180,7 @@ func (self *SfConnection) connect(delay time.Duration) error {
 			self.conn = conn
 			self.connbuf = connbuf
 
-			self.Debug.Printf("Connection established.\n")
+			self.Info.Printf("Connection established.\n")
 
 			go self.read()
 			go self.run()
@@ -215,9 +222,12 @@ func (self *SfConnection) run() {
 			self.Debug.Printf("RCV(%d): %X\n", len(msg), msg)
 			if len(msg) > 0 {
 				if dispatcher, ok := self.dispatchers[msg[0]]; ok {
-					dispatcher.Receive(msg)
+					err := dispatcher.Receive(msg)
+					if err != nil {
+						self.Debug.Printf("Dispatcher error: %s", err)
+					}
 				} else {
-					self.Error.Printf("No dispatcher for %d!\n", msg[0])
+					self.Debug.Printf("No dispatcher for %02X!\n", msg[0])
 				}
 			}
 		case msg := <-self.outgoing:
@@ -255,7 +265,7 @@ func (self *SfConnection) Send(msg Packet) error {
 }
 
 func (self *SfConnection) AddDispatcher(dispatcher Dispatcher) error {
-	self.dispatchers[dispatcher.Header()] = dispatcher
+	self.dispatchers[dispatcher.Dispatch()] = dispatcher
 	return nil
 }
 

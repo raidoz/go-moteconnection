@@ -9,6 +9,7 @@ import "errors"
 import "fmt"
 
 type Message struct {
+	dispatch    byte
 	destination AMAddr
 	source      AMAddr
 	sourceSet   bool
@@ -24,19 +25,29 @@ type Message struct {
 var _ Packet = (*Message)(nil)
 var _ PacketFactory = (*Message)(nil)
 
-func NewMessageFactory(defaultGroup AMGroup, defaultSource AMAddr) *Message {
+func NewMessage(defaultGroup AMGroup, defaultSource AMAddr) *Message {
 	msg := new(Message)
+	msg.dispatch = 0
 	msg.defaultGroup = defaultGroup
 	msg.defaultSource = defaultSource
 	return msg
 }
 
 // Message also serves as a factory.
-func (self *Message) New() Packet {
+func (self *Message) NewPacket() Packet {
 	msg := new(Message)
+	msg.dispatch = self.dispatch
 	msg.defaultGroup = self.defaultGroup
 	msg.defaultSource = self.defaultSource
 	return msg
+}
+
+func (self *Message) Dispatch() byte {
+	return self.dispatch
+}
+
+func (self *Message) SetDispatch(dispatch byte) {
+	self.dispatch = dispatch
 }
 
 func (self *Message) Type() AMID {
@@ -80,7 +91,7 @@ func (self *Message) SetSource(source AMAddr) {
 }
 
 func (self *Message) String() string {
-	return fmt.Sprintf("%04X->%04X[%02X]% 3d: %X", self.source, self.destination, self.ptype, len(self.Payload), self.Payload)
+	return fmt.Sprintf("%04X->%04X[%02X]% 3d: %X", self.Source(), self.destination, self.ptype, len(self.Payload), self.Payload)
 }
 
 func (self *Message) Serialize() ([]byte, error) {
@@ -91,7 +102,7 @@ func (self *Message) Serialize() ([]byte, error) {
 		return nil, errors.New(fmt.Sprintf("Message payload too long(%d)", len(self.Payload)))
 	}
 
-	err = binary.Write(buf, binary.BigEndian, uint8(0))
+	err = binary.Write(buf, binary.BigEndian, self.dispatch)
 	if err != nil {
 		panic(err)
 	}
@@ -182,6 +193,7 @@ func (self *Message) Deserialize(data []byte) error {
 		return err
 	}
 
+	self.dispatch = dispatch
 	self.SetDestination(destination)
 	self.SetSource(source)
 	self.SetGroup(group)
