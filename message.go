@@ -91,7 +91,7 @@ func (self *Message) SetSource(source AMAddr) {
 }
 
 func (self *Message) String() string {
-	return fmt.Sprintf("{%02X}%04X->%04X[%02X]% 3d: %X", self.Group(), self.Source(), self.destination, self.ptype, len(self.Payload), self.Payload)
+	return fmt.Sprintf("{%02X}%04X->%04X[%02X]%3d: %X", self.Group(), self.Source(), self.destination, self.ptype, len(self.Payload), self.Payload)
 }
 
 func (self *Message) Serialize() ([]byte, error) {
