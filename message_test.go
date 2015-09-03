@@ -46,3 +46,20 @@ func TestMessageDeserialization(t *testing.T) {
 		t.Error(fmt.Sprintf("Payload mismatch %X != %X", msg.Payload, raw[8:]))
 	}
 }
+
+func TestMessagePrinting(t *testing.T) {
+	raw, _ := hex.DecodeString("00FFFF000110FF0300112233445566778899AABBCCDDEEFF")
+
+	msg := new(Message)
+	err := msg.Deserialize(raw)
+	if err != nil {
+		t.Error(err)
+	}
+
+	expected := "{FF}0001->FFFF[03] 16: 00112233445566778899AABBCCDDEEFF"
+	stringed := fmt.Sprintf("%s", msg)
+
+	if stringed != expected {
+		t.Error(fmt.Sprintf("Packet did not print correctly:\nExpected: %s\nReceived: %s", expected, stringed))
+	}
+}
