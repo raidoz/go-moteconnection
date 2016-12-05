@@ -13,8 +13,8 @@ type PacketDispatcher struct {
 
 type MessageDispatcher struct {
 	factory   *Message
-	receivers map[AMID]chan *Message
-	snooper   chan *Message
+	receivers map[AMID]chan Packet
+	snooper   chan Packet
 }
 
 var _ Dispatcher = (*PacketDispatcher)(nil)
@@ -61,6 +61,10 @@ func (self *PacketDispatcher) NewPacket() Packet {
 	return self.factory.NewPacket()
 }
 
+func (self *MessageDispatcher) NewPacket() Packet {
+	return self.factory.NewPacket()
+}
+
 func (self *MessageDispatcher) NewMessage() *Message {
 	return self.factory.NewPacket().(*Message)
 }
@@ -70,12 +74,12 @@ func (self *PacketDispatcher) RegisterReceiver(receiver chan Packet) error {
 	return nil
 }
 
-func (self *MessageDispatcher) RegisterMessageSnooper(receiver chan *Message) error {
+func (self *MessageDispatcher) RegisterMessageSnooper(receiver chan Packet) error {
 	self.snooper = receiver
 	return nil
 }
 
-func (self *MessageDispatcher) RegisterMessageReceiver(amid AMID, receiver chan *Message) error {
+func (self *MessageDispatcher) RegisterMessageReceiver(amid AMID, receiver chan Packet) error {
 	self.receivers[amid] = receiver
 	return nil
 }
@@ -89,6 +93,6 @@ func NewPacketDispatcher(packetfactory PacketFactory) *PacketDispatcher {
 func NewMessageDispatcher(packetfactory *Message) *MessageDispatcher {
 	d := new(MessageDispatcher)
 	d.factory = packetfactory
-	d.receivers = make(map[AMID]chan *Message)
+	d.receivers = make(map[AMID]chan Packet)
 	return d
 }

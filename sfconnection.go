@@ -21,6 +21,8 @@ type Packet interface {
 	Dispatch() byte
 	Serialize() ([]byte, error)
 	Deserialize([]byte) error
+	SetPayload([]byte) error
+	GetPayload() []byte
 }
 
 type PacketFactory interface {
@@ -31,6 +33,7 @@ type PacketFactory interface {
 type Dispatcher interface {
 	Dispatch() byte
 	Receive([]byte) error
+	NewPacket() Packet
 }
 
 type SfConnection struct {

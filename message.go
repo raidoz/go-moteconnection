@@ -46,6 +46,15 @@ func (self *Message) Dispatch() byte {
 	return self.dispatch
 }
 
+func (self *Message) SetPayload(payload []byte) error {
+	self.Payload = payload
+	return nil
+}
+
+func (self *Message) GetPayload() []byte {
+	return self.Payload
+}
+
 func (self *Message) SetDispatch(dispatch byte) {
 	self.dispatch = dispatch
 }
