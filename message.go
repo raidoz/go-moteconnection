@@ -17,9 +17,18 @@ type Message struct {
 	groupSet    bool
 	ptype       AMID
 	Payload     []byte
+	Footer      []byte
+
+	LQI  uint8 // LQI is set if footer is exactly 2 bytes long
+	RSSI int8  // RSSI is set if footer is exactly 2 bytes long
 
 	defaultSource AMAddr
 	defaultGroup  AMGroup
+}
+
+type LinkQualitySignalStrengthFooter struct {
+	lqi  uint8
+	rssi int8
 }
 
 var _ Packet = (*Message)(nil)
@@ -100,7 +109,11 @@ func (self *Message) SetSource(source AMAddr) {
 }
 
 func (self *Message) String() string {
-	return fmt.Sprintf("{%s}%s->%s[%s]%3d: %X", self.Group(), self.Source(), self.destination, self.ptype, len(self.Payload), self.Payload)
+	s := fmt.Sprintf("{%s}%s->%s[%s]%3d: %X", self.Group(), self.Source(), self.destination, self.ptype, len(self.Payload), self.Payload)
+	if self.LQI != 0 && self.RSSI != 0 {
+		s = fmt.Sprintf("%s %02X:%3d", s, self.LQI, self.RSSI)
+	}
+	return s
 }
 
 func (self *Message) Serialize() ([]byte, error) {
@@ -144,6 +157,13 @@ func (self *Message) Serialize() ([]byte, error) {
 	_, err = buf.Write(self.Payload)
 	if err != nil {
 		panic(err)
+	}
+
+	if len(self.Footer) > 0 {
+		_, err = buf.Write(self.Footer)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return buf.Bytes(), nil
@@ -191,12 +211,11 @@ func (self *Message) Deserialize(data []byte) error {
 		return err
 	}
 
-	buflen := buf.Len()
-	if uint8(buflen) != length {
-		return errors.New(fmt.Sprintf("Payload length mismatch, header=%d, actual=%d", length, buflen))
+	if (uint8)(buf.Len()) < length {
+		return errors.New(fmt.Sprintf("Payload too short - header=%d, actual=%d", length, buf.Len()))
 	}
 
-	payload := make([]byte, buflen)
+	payload := make([]byte, length)
 	_, err = buf.Read(payload)
 	if err != nil {
 		return err
@@ -208,6 +227,29 @@ func (self *Message) Deserialize(data []byte) error {
 	self.SetGroup(group)
 	self.SetType(ptype)
 	self.Payload = payload
+
+	if buf.Len() > 0 {
+		footer := make([]byte, buf.Len())
+		_, err = buf.Read(footer)
+		if err != nil {
+			return err
+		}
+		self.Footer = footer
+
+		if len(self.Footer) == 2 {
+			footerbuf := bytes.NewReader(self.Footer)
+
+			err = binary.Read(footerbuf, binary.BigEndian, &self.LQI)
+			if err != nil {
+				return err
+			}
+
+			err = binary.Read(footerbuf, binary.BigEndian, &self.RSSI)
+			if err != nil {
+				return err
+			}
+		}
+	}
 
 	return nil
 }
