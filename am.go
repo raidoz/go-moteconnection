@@ -1,7 +1,7 @@
 // Author  Raido Pahtma
 // License MIT
 
-package sfconnection
+package moteconnection
 
 import "encoding/hex"
 import "strconv"

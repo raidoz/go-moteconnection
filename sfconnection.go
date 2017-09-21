@@ -2,62 +2,25 @@
 // License MIT
 
 // SerialForwarder connection library.
-package sfconnection
+package moteconnection
 
-import "net"
-
-import "fmt"
-import "strconv"
-import "bufio"
 import "io"
 import "time"
 import "errors"
-import "sync"
-import "sync/atomic"
+import "fmt"
+import "bufio"
+import "strconv"
 
-import "github.com/proactivity-lab/go-loggers"
-
-type Packet interface {
-	Dispatch() byte
-	Serialize() ([]byte, error)
-	Deserialize([]byte) error
-	SetPayload([]byte) error
-	GetPayload() []byte
-}
-
-type PacketFactory interface {
-	Dispatch() byte
-	NewPacket() Packet
-}
-
-type Dispatcher interface {
-	Dispatch() byte
-	Receive([]byte) error
-	NewPacket() Packet
-}
+import "net"
 
 type SfConnection struct {
-	loggers.DIWEloggers
+	BaseMoteConnection
 
 	Host string
 	Port uint16
 
-	connectlock   sync.Mutex
-	shouldconnect bool
-	autoconnect   bool
-	period        time.Duration
-
-	connected atomic.Value
-	outgoing  chan []byte
-	incoming  chan []byte
-
-	dispatchers map[byte]Dispatcher
-
 	conn    net.Conn
 	connbuf *bufio.Reader
-
-	watchdog chan bool
-	closed   chan bool
 }
 
 func (self *SfConnection) runErrorHandler(err error) error {
@@ -77,29 +40,10 @@ func (self *SfConnection) connectErrorHandler(conn net.Conn, err error) error {
 	return self.runErrorHandler(err)
 }
 
-func (self *SfConnection) Connected() bool {
-	return self.connected.Load().(bool)
-}
-
-func (self *SfConnection) Disconnect() {
-	self.notifyWatchdog(false)
-
-	self.connectlock.Lock()
-	defer self.connectlock.Unlock()
-
-	self.shouldconnect = false
-	self.autoconnect = false
-	if self.connected.Load().(bool) {
-		self.conn.Close()
-	}
-}
-
-func (self *SfConnection) Connect(host string, port uint16) error {
+func (self *SfConnection) Connect() error {
 	self.connectlock.Lock()
 
-	self.Host = host
-	self.Port = port
-	self.shouldconnect = true
+	self.shouldconnect.Store(true)
 	self.autoconnect = false
 
 	self.connectlock.Unlock()
@@ -107,24 +51,14 @@ func (self *SfConnection) Connect(host string, port uint16) error {
 	return self.connect(0)
 }
 
-func (self *SfConnection) Autoconnect(host string, port uint16, period time.Duration) {
+func (self *SfConnection) Autoconnect(period time.Duration) {
 	self.connectlock.Lock()
 	defer self.connectlock.Unlock()
 
-	self.Host = host
-	self.Port = port
-	self.shouldconnect = true
+	self.shouldconnect.Store(true)
 	self.autoconnect = true
 	self.period = period
 	go self.connect(0)
-}
-
-func (self *SfConnection) notifyWatchdog(outcome bool) {
-	select {
-	case self.watchdog <- outcome:
-	case <-time.After(time.Second):
-		self.Debug.Printf("No watchdog?\n")
-	}
 }
 
 func (self *SfConnection) connectWatchdog(timeout time.Duration, conn net.Conn) {
@@ -153,7 +87,7 @@ func (self *SfConnection) connect(delay time.Duration) error {
 		return errors.New("Already connected.")
 	}
 
-	if self.shouldconnect == false {
+	if self.shouldconnect.Load().(bool) == false {
 		return errors.New("Connect interrupted.")
 	}
 
@@ -189,12 +123,12 @@ func (self *SfConnection) connect(delay time.Duration) error {
 			go self.run()
 
 			return nil
-		} else {
-			return self.connectErrorHandler(conn, errors.New(fmt.Sprintf("Unsupported protocol %s!", string(protocol))))
 		}
-	} else {
-		return self.connectErrorHandler(conn, err)
+
+		return self.connectErrorHandler(conn, errors.New(fmt.Sprintf("Unsupported protocol %s!", string(protocol))))
 	}
+
+	return self.connectErrorHandler(conn, err)
 }
 
 func (self *SfConnection) read() {
@@ -239,6 +173,8 @@ func (self *SfConnection) run() {
 			self.Debug.Printf("SND(%d): %X\n", length[0], msg)
 			self.conn.Write(length)
 			self.conn.Write(msg)
+		case <-self.close:
+			self.conn.Close()
 		case <-self.closed:
 			self.Debug.Printf("Connection closed.\n")
 			self.connectlock.Lock()
@@ -254,32 +190,17 @@ func (self *SfConnection) run() {
 	}
 }
 
-func (self *SfConnection) Send(msg Packet) error {
-	serialized, err := msg.Serialize()
-	if err != nil {
-		return err
-	}
-	select {
-	case self.outgoing <- serialized:
-		return nil
-	case <-time.After(50 * time.Millisecond): // Because the run goroutine might be doing something other than reading self.outgoing at this very moment
-		return errors.New("Not connected!")
-	}
-}
-
-func (self *SfConnection) AddDispatcher(dispatcher Dispatcher) error {
-	self.dispatchers[dispatcher.Dispatch()] = dispatcher
-	return nil
-}
-
-func NewSfConnection() *SfConnection {
+func NewSfConnection(host string, port uint16) *SfConnection {
 	sfc := new(SfConnection)
 	sfc.InitLoggers()
+	sfc.Host = host
+	sfc.Port = port
 	sfc.dispatchers = make(map[byte]Dispatcher)
 	sfc.outgoing = make(chan []byte)
 	sfc.incoming = make(chan []byte)
 	sfc.watchdog = make(chan bool)
 	sfc.closed = make(chan bool)
+	sfc.close = make(chan bool)
 	sfc.connected.Store(false)
 	return sfc
 }

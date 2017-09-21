@@ -1,2 +1,2 @@
-# go-sfconnection
-Serialforwarder connection library for go.
+# go-moteconnection
+SmartDust mote serial and SerialForwarder connection library for go.

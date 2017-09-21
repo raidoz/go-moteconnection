@@ -1,7 +1,8 @@
 // Author  Raido Pahtma
 // License MIT
 
-package sfconnection
+// Packet serialization and deserialization library.
+package moteconnection
 
 import "fmt"
 import "reflect"
