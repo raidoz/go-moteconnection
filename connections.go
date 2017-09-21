@@ -48,4 +48,3 @@ func CreateConnection(connectionstring string) (MoteConnection, string, error) {
 	}
 	return NewSfConnection("localhost", 9002), "sf@localhost:9002", nil
 }
-l
