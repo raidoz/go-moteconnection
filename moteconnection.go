@@ -62,7 +62,7 @@ type BaseMoteConnection struct {
 func (self *BaseMoteConnection) notifyWatchdog(outcome bool) {
 	select {
 	case self.watchdog <- outcome:
-	default:
+	case <-time.After(50 * time.Millisecond): // Because notification could happen before the watchdog has started
 		self.Debug.Printf("No watchdog?\n")
 	}
 }
