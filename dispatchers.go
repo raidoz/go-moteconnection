@@ -84,6 +84,11 @@ func (self *MessageDispatcher) RegisterMessageReceiver(amid AMID, receiver chan 
 	return nil
 }
 
+func (self *MessageDispatcher) DeregisterMessageReceiver(amid AMID) error {
+	delete(self.receivers, amid)
+	return nil
+}
+
 func NewPacketDispatcher(packetfactory PacketFactory) *PacketDispatcher {
 	d := new(PacketDispatcher)
 	d.factory = packetfactory

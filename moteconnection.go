@@ -87,7 +87,7 @@ func (self *BaseMoteConnection) AddDispatcher(dispatcher Dispatcher) error {
 }
 
 func (self *BaseMoteConnection) RemoveDispatcher(dispatch uint8) error {
-	self.dispatchers[dispatch] = nil
+	delete(self.dispatchers, dispatch)
 	return nil
 }
 
