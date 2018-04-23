@@ -36,6 +36,7 @@ type MoteConnection interface {
 	Autoconnect(period time.Duration)
 	Send(msg Packet) error
 	AddDispatcher(dispatcher Dispatcher) error
+	RemoveDispatcher(dispatch uint8) error
 	Connected() bool
 	Disconnect()
 }
@@ -82,6 +83,11 @@ func (self *BaseMoteConnection) Send(msg Packet) error {
 
 func (self *BaseMoteConnection) AddDispatcher(dispatcher Dispatcher) error {
 	self.dispatchers[dispatcher.Dispatch()] = dispatcher
+	return nil
+}
+
+func (self *BaseMoteConnection) RemoveDispatcher(dispatch uint8) error {
+	self.dispatchers[dispatch] = nil
 	return nil
 }
 
