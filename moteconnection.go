@@ -53,7 +53,8 @@ type BaseMoteConnection struct {
 	outgoing  chan []byte
 	incoming  chan []byte
 
-	dispatchers map[byte]Dispatcher
+	dispatchers      map[byte]Dispatcher
+	removeDispatcher chan uint8
 
 	watchdog chan bool
 	closed   chan bool
@@ -87,7 +88,13 @@ func (self *BaseMoteConnection) AddDispatcher(dispatcher Dispatcher) error {
 }
 
 func (self *BaseMoteConnection) RemoveDispatcher(dispatch uint8) error {
-	delete(self.dispatchers, dispatch)
+	self.connectlock.Lock()
+	defer self.connectlock.Unlock()
+	if self.connected.Load().(bool) {
+		self.removeDispatcher <- dispatch
+	} else {
+		delete(self.dispatchers, dispatch)
+	}
 	return nil
 }
 

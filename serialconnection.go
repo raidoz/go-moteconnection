@@ -254,6 +254,8 @@ func (self *SerialConnection) run() {
 				go self.connect(self.period)
 			}
 			return
+		case dispatch := <-self.removeDispatcher:
+			delete(self.dispatchers, dispatch)
 		}
 	}
 }
@@ -269,6 +271,7 @@ func NewSerialConnection(port string, baud int) *SerialConnection {
 	sc.Port = port
 	sc.Baud = baud
 	sc.dispatchers = make(map[byte]Dispatcher)
+	sc.removeDispatcher = make(chan uint8)
 	sc.outgoing = make(chan []byte)
 	sc.incoming = make(chan []byte)
 	sc.acks = make(chan byte)
