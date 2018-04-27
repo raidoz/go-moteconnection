@@ -4,6 +4,7 @@
 package moteconnection
 
 import "fmt"
+import "time"
 import "errors"
 
 type PacketDispatcher struct {
@@ -24,8 +25,13 @@ func (self *PacketDispatcher) Receive(msg []byte) error {
 	p := self.factory.NewPacket()
 	err := p.Deserialize(msg)
 	if err == nil {
-		if self.receiver != nil {
-			self.receiver <- p
+	DeliverReceiver:
+		for self.receiver != nil {
+			select {
+			case self.receiver <- p:
+				break DeliverReceiver
+			case <-time.After(50 * time.Millisecond):
+			}
 		}
 	} else {
 		return errors.New(fmt.Sprintf("Deserialize error: %s", err))
@@ -37,11 +43,21 @@ func (self *MessageDispatcher) Receive(msg []byte) error {
 	p := self.factory.NewPacket().(*Message)
 	err := p.Deserialize(msg)
 	if err == nil {
-		if receiver, ok := self.receivers[p.Type()]; ok {
-			receiver <- p
+	DeliverReceiver:
+		for rcvr, ok := self.receivers[p.Type()]; ok; rcvr, ok = self.receivers[p.Type()] {
+			select {
+			case rcvr <- p:
+				break DeliverReceiver
+			case <-time.After(50 * time.Millisecond):
+			}
 		}
-		if self.snooper != nil {
-			self.snooper <- p
+	DeliverSnooper:
+		for self.snooper != nil {
+			select {
+			case self.snooper <- p:
+				break DeliverSnooper
+			case <-time.After(50 * time.Millisecond):
+			}
 		}
 	} else {
 		return errors.New(fmt.Sprintf("Deserialize error: %s", err))
