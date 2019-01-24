@@ -36,7 +36,7 @@ type MoteConnection interface {
 	Autoconnect(period time.Duration)
 	Send(msg Packet) error
 	AddDispatcher(dispatcher Dispatcher) error
-	RemoveDispatcher(dispatch uint8) error
+	RemoveDispatcher(dispatch Dispatcher) error
 	Connected() bool
 	Disconnect()
 }
@@ -54,7 +54,8 @@ type BaseMoteConnection struct {
 	incoming  chan []byte
 
 	dispatchers      map[byte]Dispatcher
-	removeDispatcher chan uint8
+	removeDispatcher chan Dispatcher
+	addDispatcher    chan Dispatcher
 
 	watchdog chan bool
 	closed   chan bool
@@ -83,17 +84,23 @@ func (self *BaseMoteConnection) Send(msg Packet) error {
 }
 
 func (self *BaseMoteConnection) AddDispatcher(dispatcher Dispatcher) error {
-	self.dispatchers[dispatcher.Dispatch()] = dispatcher
-	return nil
-}
-
-func (self *BaseMoteConnection) RemoveDispatcher(dispatch uint8) error {
 	self.connectlock.Lock()
 	defer self.connectlock.Unlock()
 	if self.connected.Load().(bool) {
-		self.removeDispatcher <- dispatch
+		self.addDispatcher <- dispatcher
 	} else {
-		delete(self.dispatchers, dispatch)
+		self.dispatchers[dispatcher.Dispatch()] = dispatcher
+	}
+	return nil
+}
+
+func (self *BaseMoteConnection) RemoveDispatcher(dispatcher Dispatcher) error {
+	self.connectlock.Lock()
+	defer self.connectlock.Unlock()
+	if self.connected.Load().(bool) {
+		self.removeDispatcher <- dispatcher
+	} else {
+		delete(self.dispatchers, dispatcher.Dispatch())
 	}
 	return nil
 }

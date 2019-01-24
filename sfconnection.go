@@ -186,8 +186,13 @@ func (self *SfConnection) run() {
 				go self.connect(self.period)
 			}
 			return
-		case dispatch := <-self.removeDispatcher:
-			delete(self.dispatchers, dispatch)
+		case dispatcher := <-self.removeDispatcher:
+			if self.dispatchers[dispatcher.Dispatch()] != dispatcher {
+				panic("Asked to remove a dispatcher that is not registered!")
+			}
+			delete(self.dispatchers, dispatcher.Dispatch())
+		case dispatcher := <-self.addDispatcher:
+			self.dispatchers[dispatcher.Dispatch()] = dispatcher
 		}
 	}
 }
@@ -198,7 +203,8 @@ func NewSfConnection(host string, port uint16) *SfConnection {
 	sfc.Host = host
 	sfc.Port = port
 	sfc.dispatchers = make(map[byte]Dispatcher)
-	sfc.removeDispatcher = make(chan uint8)
+	sfc.removeDispatcher = make(chan Dispatcher)
+	sfc.addDispatcher = make(chan Dispatcher)
 	sfc.outgoing = make(chan []byte)
 	sfc.incoming = make(chan []byte)
 	sfc.watchdog = make(chan bool)
