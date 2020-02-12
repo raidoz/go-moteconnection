@@ -4,13 +4,15 @@
 // Serial Smart Dust Mote connection.
 package moteconnection
 
-import "time"
-import "errors"
-import "bytes"
-import "encoding/binary"
+import (
+	"bytes"
+	"encoding/binary"
+	"errors"
+	"time"
 
-import "go.bug.st/serial.v1"
-import "github.com/joaojeronimo/go-crc16"
+	"github.com/joaojeronimo/go-crc16"
+	"go.bug.st/serial.v1"
+)
 
 type SerialConnection struct {
 	BaseMoteConnection
@@ -40,6 +42,10 @@ func (self *SerialConnection) connectErrorHandler(conn serial.Port, err error) e
 		go self.connect(self.period)
 	}
 	return self.runErrorHandler(err)
+}
+
+func (self *SerialConnection) Listen() error {
+	return errors.New("Serial connection cannot be used for Listen")
 }
 
 func (self *SerialConnection) Connect() error {
@@ -96,6 +102,8 @@ func (self *SerialConnection) connect(delay time.Duration) error {
 	mode := &serial.Mode{BaudRate: self.Baud, Parity: serial.EvenParity, DataBits: 8, StopBits: serial.OneStopBit}
 
 	port, err := serial.Open(self.Port, mode)
+
+	port.SetDTR(false)
 
 	if err == nil {
 		self.notifyWatchdog(true)

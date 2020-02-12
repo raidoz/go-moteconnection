@@ -3,82 +3,103 @@
 
 package moteconnection
 
-import "encoding/hex"
-import "strconv"
-import "fmt"
+import (
+	"encoding/hex"
+	"fmt"
+	"strconv"
+)
 
+// HexByte a byte object that should be converted to string with %02X
 type HexByte byte
+
+// HexString a bunch of bytes that should be converted to string with %02X
 type HexString []byte
+
+// AMAddr an address that should be represented as %04X
 type AMAddr uint16
+
+// AMID an ID that should be represented as %02X
 type AMID uint8
+
+// AMGroup a group ID that should be represented as %02X
 type AMGroup uint8
 
-func (self HexByte) String() string {
-	return fmt.Sprintf("%02X", byte(self))
+func (hxb HexByte) String() string {
+	return fmt.Sprintf("%02X", byte(hxb))
 }
 
-func (self *HexByte) UnmarshalFlag(value string) error {
+// UnmarshalFlag unmarshals HexByte for the flags library
+func (hxb *HexByte) UnmarshalFlag(value string) error {
 	data, err := strconv.ParseUint(value, 16, 8)
-	*self = HexByte(data)
+	*hxb = HexByte(data)
 	return err
 }
 
-func (self HexByte) MarshalFlag() (string, error) {
-	return self.String(), nil
+// MarshalFlag marshals HexByte for the flags library
+func (hxb HexByte) MarshalFlag() (string, error) {
+	return hxb.String(), nil
 }
 
-func (self HexString) String() string {
-	return hex.EncodeToString(self)
+func (hxs HexString) String() string {
+	return hex.EncodeToString(hxs)
 }
 
-func (self *HexString) UnmarshalFlag(value string) error {
+// UnmarshalFlag unmarshals HexByte for the flags library
+func (hxs *HexString) UnmarshalFlag(value string) error {
 	data, err := hex.DecodeString(value)
-	*self = data
+	*hxs = data
 	return err
 }
 
-func (self HexString) MarshalFlag() (string, error) {
-	return self.String(), nil
+// MarshalFlag marshals HexStrings for the flags library
+func (hxs HexString) MarshalFlag() (string, error) {
+	return hxs.String(), nil
 }
 
-func (self AMAddr) String() string {
-	return fmt.Sprintf("%04X", uint16(self))
+func (addr AMAddr) String() string {
+	return fmt.Sprintf("%04X", uint16(addr))
 }
 
-func (self *AMAddr) UnmarshalFlag(value string) error {
+// UnmarshalFlag unmarshals AMAddr for the flags library
+func (addr *AMAddr) UnmarshalFlag(value string) error {
 	data, err := strconv.ParseUint(value, 16, 16)
-	*self = AMAddr(data)
+	*addr = AMAddr(data)
 	return err
 }
 
-func (self AMAddr) MarshalFlag() (string, error) {
-	return self.String(), nil
+// MarshalFlag marshals AMAddr for the flags library
+func (addr AMAddr) MarshalFlag() (string, error) {
+	return addr.String(), nil
 }
 
-func (self AMID) String() string {
-	return fmt.Sprintf("%02X", uint8(self))
+func (aid AMID) String() string {
+	return fmt.Sprintf("%02X", uint8(aid))
 }
 
-func (self *AMID) UnmarshalFlag(value string) error {
+// UnmarshalFlag unmarshals AMID for the flags library
+func (aid *AMID) UnmarshalFlag(value string) error {
 	data, err := strconv.ParseUint(value, 16, 8)
-	*self = AMID(data)
+	*aid = AMID(data)
 	return err
 }
 
-func (self AMID) MarshalFlag() (string, error) {
-	return self.String(), nil
+// MarshalFlag marshals AMID for the flags library
+func (aid AMID) MarshalFlag() (string, error) {
+	return aid.String(), nil
 }
 
-func (self AMGroup) String() string {
-	return fmt.Sprintf("%02X", uint8(self))
+func (grp AMGroup) String() string {
+	return fmt.Sprintf("%02X", uint8(grp))
 }
 
-func (self *AMGroup) UnmarshalFlag(value string) error {
+// UnmarshalFlag unmarshals AMGroup for the flags library
+func (grp *AMGroup) UnmarshalFlag(value string) error {
 	data, err := strconv.ParseUint(value, 16, 8)
-	*self = AMGroup(data)
+	*grp = AMGroup(data)
 	return err
 }
 
-func (self AMGroup) MarshalFlag() (string, error) {
-	return self.String(), nil
+// MarshalFlag marshals AMGroup for the flags library
+func (grp AMGroup) MarshalFlag() (string, error) {
+	return grp.String(), nil
 }

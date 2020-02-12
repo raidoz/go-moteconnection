@@ -1,24 +1,28 @@
+// Packet serialization and deserialization library.
+
 // Author  Raido Pahtma
 // License MIT
 
-// Packet serialization and deserialization library.
 package moteconnection
 
-import "fmt"
-import "reflect"
-import "strings"
-import "strconv"
-import "regexp"
-import "encoding/binary"
-import "bytes"
-import "errors"
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"reflect"
+	"regexp"
+	"strconv"
+	"strings"
+)
 
+// SerializePacket turns a relatively generic structure into a bunch of bytes
 func SerializePacket(m interface{}) []byte {
 	buf := new(bytes.Buffer)
 	transformPacket(true, buf, m)
 	return buf.Bytes()
 }
 
+// DeserializePacket turns a bunch of bytes into the provided structure, if possible
 func DeserializePacket(m interface{}, data []byte) error {
 	buf := bytes.NewBuffer(data)
 	return transformPacket(false, buf, m)
@@ -131,7 +135,7 @@ func transformPacket(serialize bool, buf *bytes.Buffer, m interface{}) error {
 				if n, err := buf.Read(b); err == nil && n == val.Field(i).Len() {
 					reflect.Copy(val.Field(i), reflect.ValueOf(b))
 				} else {
-					return errors.New(fmt.Sprintf("Unable to deserialize field %s (err=%v had %d bytes, needed %d)", sfield.Name, err, buflen, val.Field(i).Len()))
+					return fmt.Errorf("Unable to deserialize field %s (err=%v had %d bytes, needed %d)", sfield.Name, err, buflen, val.Field(i).Len())
 				}
 			}
 
@@ -149,7 +153,7 @@ func transformPacket(serialize bool, buf *bytes.Buffer, m interface{}) error {
 				if err := binary.Read(buf, binary.BigEndian, &v); err == nil {
 					val.Field(i).SetBool(v != 0)
 				} else {
-					return errors.New(fmt.Sprintf("Unable to deserialize field %s (had %d bytes)", sfield.Name, buflen))
+					return fmt.Errorf("Unable to deserialize field %s (had %d bytes)", sfield.Name, buflen)
 				}
 			}
 
@@ -162,7 +166,7 @@ func transformPacket(serialize bool, buf *bytes.Buffer, m interface{}) error {
 				if v, err := readUintFrom(sfield.Type.Kind(), buf); err == nil {
 					val.Field(i).SetUint(v)
 				} else {
-					return errors.New(fmt.Sprintf("Unable to deserialize field %s (had %d bytes)", sfield.Name, buflen))
+					return fmt.Errorf("Unable to deserialize field %s (had %d bytes)", sfield.Name, buflen)
 				}
 			}
 
@@ -175,7 +179,7 @@ func transformPacket(serialize bool, buf *bytes.Buffer, m interface{}) error {
 				if v, err := readIntFrom(sfield.Type.Kind(), buf); err == nil {
 					val.Field(i).SetInt(v)
 				} else {
-					return errors.New(fmt.Sprintf("Unable to deserialize field %s (had %d bytes)", sfield.Name, buflen))
+					return fmt.Errorf("Unable to deserialize field %s (had %d bytes)", sfield.Name, buflen)
 				}
 			}
 
@@ -203,7 +207,7 @@ func transformPacket(serialize bool, buf *bytes.Buffer, m interface{}) error {
 					if n, err := buf.Read(b); err == nil && n == slicelen {
 						val.Field(i).SetBytes(b)
 					} else {
-						return errors.New(fmt.Sprintf("Unable to deserialize field %s (err=%v had %d bytes, needed %d)", sfield.Name, err, buflen, slicelen))
+						return fmt.Errorf("Unable to deserialize field %s (err=%v had %d bytes, needed %d)", sfield.Name, err, buflen, slicelen)
 					}
 				}
 			} else {
@@ -233,7 +237,7 @@ func transformPacket(serialize bool, buf *bytes.Buffer, m interface{}) error {
 				if n, err := buf.Read(b); err == nil && n == slicelen {
 					val.Field(i).SetString(string(b))
 				} else {
-					return errors.New(fmt.Sprintf("Unable to deserialize field %s (err=%v had %d bytes, needed %d)", sfield.Name, err, buflen, slicelen))
+					return fmt.Errorf("Unable to deserialize field %s (err=%v had %d bytes, needed %d)", sfield.Name, err, buflen, slicelen)
 				}
 			}
 		case reflect.Struct:
@@ -245,7 +249,7 @@ func transformPacket(serialize bool, buf *bytes.Buffer, m interface{}) error {
 	}
 
 	if !serialize && buf.Len() != 0 {
-		return errors.New(fmt.Sprintf("Buffer contains %d extra bytes!", buf.Len()))
+		return fmt.Errorf("Buffer contains %d extra bytes", buf.Len())
 	}
 
 	return nil

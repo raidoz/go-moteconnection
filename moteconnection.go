@@ -1,16 +1,18 @@
 // Author  Raido Pahtma
 // License MIT
 
-// SmartDustMote connection library.
 package moteconnection
 
-import "time"
-import "sync"
-import "sync/atomic"
-import "errors"
+import (
+	"errors"
+	"sync"
+	"sync/atomic"
+	"time"
 
-import "github.com/proactivity-lab/go-loggers"
+	"github.com/proactivity-lab/go-loggers"
+)
 
+// Packet interface
 type Packet interface {
 	Dispatch() byte
 	Serialize() ([]byte, error)
@@ -19,19 +21,23 @@ type Packet interface {
 	GetPayload() []byte
 }
 
+// PacketFactory interface
 type PacketFactory interface {
 	Dispatch() byte
 	NewPacket() Packet
 }
 
+// Dispatcher interface
 type Dispatcher interface {
 	Dispatch() byte
 	Receive([]byte) error
 	NewPacket() Packet
 }
 
+// MoteConnection interface
 type MoteConnection interface {
 	loggers.DIWElog
+	Listen() error
 	Connect() error
 	Autoconnect(period time.Duration)
 	Send(msg Packet) error
@@ -41,6 +47,7 @@ type MoteConnection interface {
 	Disconnect()
 }
 
+// BaseMoteConnection structure
 type BaseMoteConnection struct {
 	loggers.DIWEloggers
 
@@ -62,62 +69,67 @@ type BaseMoteConnection struct {
 	close    chan bool
 }
 
-func (self *BaseMoteConnection) notifyWatchdog(outcome bool) {
+func (bmc *BaseMoteConnection) notifyWatchdog(outcome bool) {
 	select {
-	case self.watchdog <- outcome:
+	case bmc.watchdog <- outcome:
 	case <-time.After(50 * time.Millisecond): // Because notification could happen before the watchdog has started
-		self.Debug.Printf("No watchdog?\n")
+		bmc.Debug.Printf("No watchdog?\n")
 	}
 }
 
-func (self *BaseMoteConnection) Send(msg Packet) error {
+// Send sends a packet
+func (bmc *BaseMoteConnection) Send(msg Packet) error {
 	serialized, err := msg.Serialize()
 	if err != nil {
 		return err
 	}
 	select {
-	case self.outgoing <- serialized:
+	case bmc.outgoing <- serialized:
 		return nil
-	case <-time.After(50 * time.Millisecond): // Because the run goroutine might be doing something other than reading self.outgoing at this very moment
-		return errors.New("Not connected!")
+	case <-time.After(50 * time.Millisecond): // Because the run goroutine might be doing something other than reading bmc.outgoing at this very moment
+		return errors.New("Not connected")
 	}
 }
 
-func (self *BaseMoteConnection) AddDispatcher(dispatcher Dispatcher) error {
-	self.connectlock.Lock()
-	defer self.connectlock.Unlock()
-	if self.connected.Load().(bool) {
-		self.addDispatcher <- dispatcher
+// AddDispatcher adds a dispatcher to the connection
+func (bmc *BaseMoteConnection) AddDispatcher(dispatcher Dispatcher) error {
+	bmc.connectlock.Lock()
+	defer bmc.connectlock.Unlock()
+	if bmc.connected.Load().(bool) {
+		bmc.addDispatcher <- dispatcher
 	} else {
-		self.dispatchers[dispatcher.Dispatch()] = dispatcher
+		bmc.dispatchers[dispatcher.Dispatch()] = dispatcher
 	}
 	return nil
 }
 
-func (self *BaseMoteConnection) RemoveDispatcher(dispatcher Dispatcher) error {
-	self.connectlock.Lock()
-	defer self.connectlock.Unlock()
-	if self.connected.Load().(bool) {
-		self.removeDispatcher <- dispatcher
+// RemoveDispatcher removes a dispatcher from the connection
+func (bmc *BaseMoteConnection) RemoveDispatcher(dispatcher Dispatcher) error {
+	bmc.connectlock.Lock()
+	defer bmc.connectlock.Unlock()
+	if bmc.connected.Load().(bool) {
+		bmc.removeDispatcher <- dispatcher
 	} else {
-		delete(self.dispatchers, dispatcher.Dispatch())
+		delete(bmc.dispatchers, dispatcher.Dispatch())
 	}
 	return nil
 }
 
-func (self *BaseMoteConnection) Connected() bool {
-	return self.connected.Load().(bool)
+// Connected checks if the connection is connected
+func (bmc *BaseMoteConnection) Connected() bool {
+	return bmc.connected.Load().(bool)
 }
 
-func (self *BaseMoteConnection) Disconnect() {
-	self.notifyWatchdog(false) // Because of autoconnect, watchdog may be active
+// Disconnect disconnects the connection or stops a server
+func (bmc *BaseMoteConnection) Disconnect() {
+	bmc.notifyWatchdog(false) // Because of autoconnect, watchdog may be active
 
-	self.connectlock.Lock()
-	defer self.connectlock.Unlock()
+	bmc.connectlock.Lock()
+	defer bmc.connectlock.Unlock()
 
-	self.shouldconnect.Store(false)
-	self.autoconnect = false
-	if self.connected.Load().(bool) {
-		self.close <- true
+	bmc.shouldconnect.Store(false)
+	bmc.autoconnect = false
+	if bmc.connected.Load().(bool) {
+		bmc.close <- true
 	}
 }
