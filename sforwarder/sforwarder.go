@@ -40,7 +40,7 @@ func main() {
 
 	var opts struct {
 		Positional struct {
-			ServerConnectionString string `description:"Connectionstring sf@HOST:PORT" default:"sf@0.0.0.0:9002"`
+			ServerConnectionString string `description:"Connectionstring sf/udp@HOST:PORT" default:"sf@0.0.0.0:9002"`
 			ClientConnectionString string `description:"Connectionstring sf@HOST:PORT or serial@PORT:BAUD" default:"serial@/dev/ttyUSB0:115200"`
 		} `positional-args:"yes"`
 
