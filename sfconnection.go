@@ -30,7 +30,7 @@ type SfConnection struct {
 	Host string
 	Port uint16
 
-	connections []connection
+	connections []*connection
 	started     bool
 	server      bool
 
@@ -209,7 +209,10 @@ func (sfc *SfConnection) connectUDP(conn net.Conn) error {
 	c.Reader = connbuf
 	c.Incoming = sfc.incoming
 	c.Closed = sfc.closed
-	sfc.connections = append(sfc.connections, c)
+
+	sfc.connectlock.Lock()
+	sfc.connections = append(sfc.connections, &c)
+	sfc.connectlock.Unlock()
 
 	sfc.Info.Printf("Connection established.\n")
 
@@ -245,7 +248,10 @@ func (sfc *SfConnection) connectTCP(conn net.Conn) error {
 			c.Reader = connbuf
 			c.Incoming = sfc.incoming
 			c.Closed = sfc.closed
-			sfc.connections = append(sfc.connections, c)
+
+			sfc.connectlock.Lock()
+			sfc.connections = append(sfc.connections, &c)
+			sfc.connectlock.Unlock()
 
 			sfc.Info.Printf("Connection established.\n")
 
@@ -305,8 +311,8 @@ func (sfc *SfConnection) run() {
 		case msg := <-sfc.outgoing:
 			length := make([]byte, 1)
 			length[0] = byte(len(msg))
-			sfc.Debug.Printf("SND(%d): %X\n", length[0], msg)
 			for _, conn := range sfc.connections {
+				sfc.Debug.Printf("SND %s->%s (%d):%X\n", conn.Conn.LocalAddr(), conn.Conn.RemoteAddr(), length[0], msg)
 				conn.Conn.Write(length)
 				conn.Conn.Write(msg)
 			}
@@ -320,18 +326,17 @@ func (sfc *SfConnection) run() {
 			sfc.connectlock.Lock()
 
 			// Connection cleanup
-			var conns []connection
+			var conns []*connection
 			for _, conn := range sfc.connections {
-				if conn.IsClosed.Load() == false {
+				if conn.IsClosed.Load() == nil {
 					conns = append(conns, conn)
 				}
 			}
 			sfc.connections = conns
 
-			sfc.connected.Store(false)
-			sfc.connectlock.Unlock()
-
 			if len(sfc.connections) == 0 {
+				sfc.connected.Store(false)
+
 				if sfc.server {
 					sfc.Debug.Printf("No connections left.\n")
 				}
@@ -341,6 +346,8 @@ func (sfc *SfConnection) run() {
 					go sfc.dial(sfc.period)
 				}
 			}
+
+			sfc.connectlock.Unlock()
 		case dispatcher := <-sfc.removeDispatcher:
 			if sfc.dispatchers[dispatcher.Dispatch()] != dispatcher {
 				panic("Asked to remove a dispatcher that is not registered!")
@@ -356,7 +363,7 @@ func (sfc *SfConnection) run() {
 func NewSfConnection(host string, port uint16) *SfConnection {
 	sfc := new(SfConnection)
 	sfc.InitLoggers()
-	sfc.connections = make([]connection, 0)
+	sfc.connections = make([]*connection, 0)
 	sfc.Host = host
 	sfc.Port = port
 	sfc.dispatchers = make(map[byte]Dispatcher)
