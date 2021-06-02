@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"syscall"
 	"time"
 
 	"github.com/joaojeronimo/go-crc16"
@@ -29,7 +30,7 @@ type SerialConnection struct {
 
 func (self *SerialConnection) runErrorHandler(err error) error {
 	// if err != Some known common error {
-	self.Debug.Printf("%s\n", err)
+	self.Debug.Printf("SCERR: %s\n", err)
 	// }
 	return err
 }
@@ -175,6 +176,9 @@ func (self *SerialConnection) read() {
 				self.closed <- true
 				break
 			}
+		} else if err == syscall.EINTR {
+			//self.Debug.Printf("EINTR\n")
+			continue
 		} else {
 			self.runErrorHandler(err)
 			self.closed <- true
