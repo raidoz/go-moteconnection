@@ -15,6 +15,8 @@ import (
 	"go.bug.st/serial.v1"
 )
 
+const IncomingBufferSize = 10
+
 type SerialConnection struct {
 	BaseMoteConnection
 
@@ -126,7 +128,7 @@ func (self *SerialConnection) read() {
 	escape := false
 	buf := new(bytes.Buffer)
 	for {
-		p := make([]byte, 256)
+		p := make([]byte, 16)
 		length, err := self.conn.Read(p)
 		if err == nil {
 			if length > 0 {
@@ -291,7 +293,7 @@ func NewSerialConnection(port string, baud int) *SerialConnection {
 	sc.removeDispatcher = make(chan Dispatcher)
 	sc.addDispatcher = make(chan Dispatcher)
 	sc.outgoing = make(chan []byte)
-	sc.incoming = make(chan []byte)
+	sc.incoming = make(chan []byte, IncomingBufferSize)
 	sc.acks = make(chan byte)
 	sc.watchdog = make(chan bool)
 	sc.closed = make(chan bool)
