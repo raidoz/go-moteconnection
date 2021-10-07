@@ -77,12 +77,14 @@ func (sfc *SfConnection) Connect() error {
 // Autoconnect - initiate an asynchronous and self-maintaining connection
 func (sfc *SfConnection) Autoconnect(period time.Duration) {
 	sfc.connectlock.Lock()
-	defer sfc.connectlock.Unlock()
 
 	sfc.server = false
 	sfc.shouldconnect.Store(true)
 	sfc.autoconnect = true
 	sfc.period = period
+
+	sfc.connectlock.Unlock()
+
 	go sfc.dial(0)
 }
 
@@ -167,13 +169,14 @@ func (sfc *SfConnection) dial(delay time.Duration) error {
 	time.Sleep(delay)
 
 	sfc.connectlock.Lock()
-	defer sfc.connectlock.Unlock()
 
 	if sfc.connected.Load().(bool) {
+		sfc.connectlock.Unlock()
 		return errors.New("Already connected")
 	}
 
 	if sfc.shouldconnect.Load().(bool) == false {
+		sfc.connectlock.Unlock()
 		return errors.New("Connect interrupted")
 	}
 
@@ -182,10 +185,12 @@ func (sfc *SfConnection) dial(delay time.Duration) error {
 	sfc.Info.Printf("Connecting to %s\n", constring)
 	conn, err := net.Dial(sfc.Protocol, constring)
 	if err != nil {
+		sfc.connectlock.Unlock()
 		return sfc.connectErrorHandler(conn, err)
 	}
 
-	return sfc.connect(conn)
+	sfc.connectlock.Unlock()
+	return sfc.connect(conn) // Mutex must be unlocked before calling this
 }
 
 func (sfc *SfConnection) connect(conn net.Conn) error {
