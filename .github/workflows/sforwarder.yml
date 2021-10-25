@@ -12,12 +12,12 @@ jobs:
         go-version: '1.17.2'
 
     - name: Install build tools
-      run: sudo apt update && sudo apt install -y lsb-release build-essential debhelper
+      run: sudo apt update && sudo apt install -y lsb-release build-essential debhelper upx
 
 
     # AMD64
     - name: Build sforwarder for amd64
-      run: cd sforwarder && make amd64
+      run: cd sforwarder && make amd64 USE_UPX=1
 
     - name: Run amd64 sforwarder
       run: ./sforwarder/build/linux-amd64/sforwarder -V
@@ -34,7 +34,7 @@ jobs:
 
     # ARMv5 / armel
     - name: Build sforwarder for arm5 and name it armel
-      run: cd sforwarder && make arm5 && mv build/linux-arm5 build/linux-armel
+      run: cd sforwarder && make arm5 USE_UPX=1 && mv build/linux-arm5 build/linux-armel
 
     - name: Package sforwarder for armel
       run: cd sforwarder && dpkg-buildpackage --host-arch armel -b --no-sign
@@ -42,7 +42,7 @@ jobs:
 
     # ARMv6 / armhf
     - name: Build sforwarder for arm6 and name it armhf
-      run: cd sforwarder && make arm6 && mv build/linux-arm6 build/linux-armhf
+      run: cd sforwarder && make arm6 USE_UPX=1 && mv build/linux-arm6 build/linux-armhf
 
     - name: Package sforwarder for armhf
       run: cd sforwarder && dpkg-buildpackage --host-arch armhf -b --no-sign
