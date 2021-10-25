@@ -28,3 +28,11 @@ jobs:
 
     - name: Run installed sforwarder
       run: sforwarder -V
+
+
+
+    - uses: ncipollo/release-action@v1
+      with:
+        artifacts: "mote-sforwarder*.deb"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        draft: true
