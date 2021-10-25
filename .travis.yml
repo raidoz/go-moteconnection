@@ -1,0 +1,30 @@
+dist: bionic
+language: go
+go:
+ - 1.17.2
+
+before_install:
+  - sudo apt-get -q update
+  - sudo apt-get -y install lsb-release build-essential debhelper upx
+
+go_import_path: github.com/proactivity-lab/go-moteconnection
+
+install:
+
+scrpt:
+  - cd sforwarder
+  - make amd64
+  - make arm5
+  - make arm6
+  - make arm7
+  - make arm64
+
+deploy:
+  provider: releases
+  api_key: "GITHUB OAUTH TOKEN"
+  file:
+   - "*.deb"
+  skip_cleanup: true
+  draft: true
+  on:
+    tags: true
