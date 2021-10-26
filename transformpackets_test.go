@@ -3,11 +3,13 @@
 
 package moteconnection
 
-import "testing"
-import "fmt"
-import "reflect"
-import "bytes"
-import "encoding/hex"
+import (
+	"bytes"
+	"encoding/hex"
+	"fmt"
+	"reflect"
+	"testing"
+)
 
 type TransformTestPacket struct { // Field names must all be exported!
 	TestUint8        uint8
@@ -66,7 +68,7 @@ func TestDeserializer(t *testing.T) {
 
 	raw, _ := hex.DecodeString("00A0A1A0A1A2A3A0A1A2A3A4A5A6A77F70F170F1F2F370F1F2F3F4F5F6F70100010203030A74657374737472696E67040506070809")
 	if err := DeserializePacket(&dp, raw); err != nil {
-		t.Error("error %s", err)
+		t.Error("error")
 	}
 
 	// Because createpacket leaves these uninitialized and DeepEqual would thus fail

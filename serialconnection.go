@@ -4,13 +4,18 @@
 // Serial Smart Dust Mote connection.
 package moteconnection
 
-import "time"
-import "errors"
-import "bytes"
-import "encoding/binary"
+import (
+	"bytes"
+	"encoding/binary"
+	"errors"
+	"syscall"
+	"time"
 
-import "go.bug.st/serial.v1"
-import "github.com/joaojeronimo/go-crc16"
+	"github.com/joaojeronimo/go-crc16"
+	"go.bug.st/serial.v1"
+)
+
+const IncomingBufferSize = 10
 
 type SerialConnection struct {
 	BaseMoteConnection
@@ -27,7 +32,7 @@ type SerialConnection struct {
 
 func (self *SerialConnection) runErrorHandler(err error) error {
 	// if err != Some known common error {
-	self.Debug.Printf("%s\n", err)
+	self.Debug.Printf("SCERR: %s\n", err)
 	// }
 	return err
 }
@@ -40,6 +45,10 @@ func (self *SerialConnection) connectErrorHandler(conn serial.Port, err error) e
 		go self.connect(self.period)
 	}
 	return self.runErrorHandler(err)
+}
+
+func (self *SerialConnection) Listen() error {
+	return errors.New("Serial connection cannot be used for Listen")
 }
 
 func (self *SerialConnection) Connect() error {
@@ -97,6 +106,8 @@ func (self *SerialConnection) connect(delay time.Duration) error {
 
 	port, err := serial.Open(self.Port, mode)
 
+	port.SetDTR(false)
+
 	if err == nil {
 		self.notifyWatchdog(true)
 		self.connected.Store(true)
@@ -117,7 +128,7 @@ func (self *SerialConnection) read() {
 	escape := false
 	buf := new(bytes.Buffer)
 	for {
-		p := make([]byte, 256)
+		p := make([]byte, 16)
 		length, err := self.conn.Read(p)
 		if err == nil {
 			if length > 0 {
@@ -167,6 +178,9 @@ func (self *SerialConnection) read() {
 				self.closed <- true
 				break
 			}
+		} else if err == syscall.EINTR {
+			//self.Debug.Printf("EINTR\n")
+			continue
 		} else {
 			self.runErrorHandler(err)
 			self.closed <- true
@@ -279,7 +293,7 @@ func NewSerialConnection(port string, baud int) *SerialConnection {
 	sc.removeDispatcher = make(chan Dispatcher)
 	sc.addDispatcher = make(chan Dispatcher)
 	sc.outgoing = make(chan []byte)
-	sc.incoming = make(chan []byte)
+	sc.incoming = make(chan []byte, IncomingBufferSize)
 	sc.acks = make(chan byte)
 	sc.watchdog = make(chan bool)
 	sc.closed = make(chan bool)

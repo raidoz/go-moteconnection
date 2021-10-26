@@ -3,15 +3,18 @@
 
 package moteconnection
 
-import "fmt"
-import "time"
-import "errors"
+import (
+	"fmt"
+	"time"
+)
 
+// PacketDispatcher structure
 type PacketDispatcher struct {
 	factory  PacketFactory
 	receiver chan Packet
 }
 
+// MessageDispatcher structure
 type MessageDispatcher struct {
 	factory   *Message
 	receivers map[AMID]chan Packet
@@ -21,30 +24,32 @@ type MessageDispatcher struct {
 var _ Dispatcher = (*PacketDispatcher)(nil)
 var _ Dispatcher = (*MessageDispatcher)(nil)
 
-func (self *PacketDispatcher) Receive(msg []byte) error {
-	p := self.factory.NewPacket()
+// Receive distributes a packet to receivers
+func (pd *PacketDispatcher) Receive(msg []byte) error {
+	p := pd.factory.NewPacket()
 	err := p.Deserialize(msg)
 	if err == nil {
 	DeliverReceiver:
-		for self.receiver != nil {
+		for pd.receiver != nil {
 			select {
-			case self.receiver <- p:
+			case pd.receiver <- p:
 				break DeliverReceiver
 			case <-time.After(50 * time.Millisecond):
 			}
 		}
 	} else {
-		return errors.New(fmt.Sprintf("Deserialize error: %s", err))
+		return fmt.Errorf("Deserialize error: %s", err)
 	}
 	return nil
 }
 
-func (self *MessageDispatcher) Receive(msg []byte) error {
-	p := self.factory.NewPacket().(*Message)
+// Receive distributes a packet to receivers and snoopers
+func (md *MessageDispatcher) Receive(msg []byte) error {
+	p := md.factory.NewPacket().(*Message)
 	err := p.Deserialize(msg)
 	if err == nil {
 	DeliverReceiver:
-		for rcvr, ok := self.receivers[p.Type()]; ok; rcvr, ok = self.receivers[p.Type()] {
+		for rcvr, ok := md.receivers[p.Type()]; ok; rcvr, ok = md.receivers[p.Type()] {
 			select {
 			case rcvr <- p:
 				break DeliverReceiver
@@ -52,65 +57,76 @@ func (self *MessageDispatcher) Receive(msg []byte) error {
 			}
 		}
 	DeliverSnooper:
-		for self.snooper != nil {
+		for md.snooper != nil {
 			select {
-			case self.snooper <- p:
+			case md.snooper <- p:
 				break DeliverSnooper
 			case <-time.After(50 * time.Millisecond):
 			}
 		}
 	} else {
-		return errors.New(fmt.Sprintf("Deserialize error: %s", err))
+		return fmt.Errorf("Deserialize error: %s", err)
 	}
 	return nil
 }
 
-func (self *PacketDispatcher) Dispatch() byte {
-	return self.factory.Dispatch()
+// Dispatch returns the dispatch ID of the dispatcher instance
+func (pd *PacketDispatcher) Dispatch() byte {
+	return pd.factory.Dispatch()
 }
 
-func (self *MessageDispatcher) Dispatch() byte {
-	return self.factory.Dispatch()
+// Dispatch returns the dispatch ID of the dispatcher instance
+func (md *MessageDispatcher) Dispatch() byte {
+	return md.factory.Dispatch()
 }
 
-func (self *PacketDispatcher) NewPacket() Packet {
-	return self.factory.NewPacket()
+// NewPacket initializes a new packet for use with this dispatcher
+func (pd *PacketDispatcher) NewPacket() Packet {
+	return pd.factory.NewPacket()
 }
 
-func (self *MessageDispatcher) NewPacket() Packet {
-	return self.factory.NewPacket()
+// NewPacket initializes a new packet for use with this dispatcher
+func (md *MessageDispatcher) NewPacket() Packet {
+	return md.factory.NewPacket()
 }
 
-func (self *MessageDispatcher) NewMessage() *Message {
-	return self.factory.NewPacket().(*Message)
+// NewMessage initializes a new message for use with this dispatcher
+func (md *MessageDispatcher) NewMessage() *Message {
+	return md.factory.NewPacket().(*Message)
 }
 
-func (self *PacketDispatcher) RegisterReceiver(receiver chan Packet) error {
-	self.receiver = receiver
+// RegisterReceiver registers a receiver
+func (pd *PacketDispatcher) RegisterReceiver(receiver chan Packet) error {
+	pd.receiver = receiver
 	return nil
 }
 
-func (self *MessageDispatcher) RegisterMessageSnooper(receiver chan Packet) error {
-	self.snooper = receiver
+// RegisterMessageSnooper registers a snooper
+func (md *MessageDispatcher) RegisterMessageSnooper(receiver chan Packet) error {
+	md.snooper = receiver
 	return nil
 }
 
-func (self *MessageDispatcher) RegisterMessageReceiver(amid AMID, receiver chan Packet) error {
-	self.receivers[amid] = receiver
+// RegisterMessageReceiver registers a receiver
+func (md *MessageDispatcher) RegisterMessageReceiver(amid AMID, receiver chan Packet) error {
+	md.receivers[amid] = receiver
 	return nil
 }
 
-func (self *MessageDispatcher) DeregisterMessageReceiver(amid AMID) error {
-	delete(self.receivers, amid)
+// DeregisterMessageReceiver removes a receiver
+func (md *MessageDispatcher) DeregisterMessageReceiver(amid AMID) error {
+	delete(md.receivers, amid)
 	return nil
 }
 
+// NewPacketDispatcher creates a new dispatcher
 func NewPacketDispatcher(packetfactory PacketFactory) *PacketDispatcher {
 	d := new(PacketDispatcher)
 	d.factory = packetfactory
 	return d
 }
 
+// NewMessageDispatcher creates a new dispatcher
 func NewMessageDispatcher(packetfactory *Message) *MessageDispatcher {
 	d := new(MessageDispatcher)
 	d.factory = packetfactory

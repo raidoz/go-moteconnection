@@ -1,0 +1,10 @@
+Source: mote-sforwarder
+Section: misc
+Priority: optional
+Maintainer: Raido Pahtma <raido@thinnect.com>
+Build-Depends: debhelper (>= 9)
+
+Package: mote-sforwarder
+Architecture: any
+Description: Mote Serial-forwarder.
+ TinyOS serial-forwarder variant using Go moteconnection components.
