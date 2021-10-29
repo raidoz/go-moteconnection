@@ -122,14 +122,22 @@ func (bmc *BaseMoteConnection) Connected() bool {
 
 // Disconnect disconnects the connection or stops a server
 func (bmc *BaseMoteConnection) Disconnect() {
-	bmc.notifyWatchdog(false) // Because of autoconnect, watchdog may be active
-
 	bmc.connectlock.Lock()
-	defer bmc.connectlock.Unlock()
-
 	bmc.shouldconnect.Store(false)
 	bmc.autoconnect = false
+	bmc.notifyWatchdog(false) // Because of autoconnect, watchdog may be active
+	bmc.connectlock.Unlock()
+
 	if bmc.connected.Load().(bool) {
 		bmc.close <- true
+	}
+
+	// Wait for connections to close
+	for {
+		if bmc.Connected() {
+			time.Sleep(time.Millisecond)
+		} else {
+			return
+		}
 	}
 }

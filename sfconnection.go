@@ -346,10 +346,13 @@ func (sfc *SfConnection) run() {
 					sfc.Debug.Printf("No connections left.\n")
 				}
 				if closing {
+					sfc.connectlock.Unlock()
 					return
 				} else if sfc.autoconnect {
 					go sfc.dial(sfc.period)
 				}
+			} else {
+				sfc.Debug.Printf("%d connections left.\n", len(sfc.connections))
 			}
 
 			sfc.connectlock.Unlock()
