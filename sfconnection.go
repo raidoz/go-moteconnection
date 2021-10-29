@@ -322,6 +322,7 @@ func (sfc *SfConnection) run() {
 				conn.Conn.Write(msg)
 			}
 		case <-sfc.close:
+			sfc.close = nil
 			for _, conn := range sfc.connections {
 				conn.Conn.Close()
 			}

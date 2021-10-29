@@ -128,9 +128,7 @@ func (bmc *BaseMoteConnection) Disconnect() {
 	bmc.notifyWatchdog(false) // Because of autoconnect, watchdog may be active
 	bmc.connectlock.Unlock()
 
-	if bmc.connected.Load().(bool) {
-		bmc.close <- true
-	}
+	close(bmc.close)
 
 	// Wait for connections to close
 	for {

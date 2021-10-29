@@ -256,6 +256,7 @@ func (self *SerialConnection) run() {
 			}
 		case <-self.close:
 			self.Debug.Printf("Closing.\n")
+			self.close = nil
 			self.conn.Close()
 		case <-self.closed:
 			self.Debug.Printf("Connection closed.\n")
