@@ -6,10 +6,6 @@ github.com/joaojeronimo/go-crc16 v0.0.0-20140729130949-59bd0194935e h1:LY29wmnTc
 github.com/joaojeronimo/go-crc16 v0.0.0-20140729130949-59bd0194935e/go.mod h1:+X++CLDTje8Yr7J4bGuUYx5LVbNpXPeO5ZLpI42hKVk=
 github.com/proactivity-lab/go-loggers v0.0.0-20180417085828-f892709079bd h1:Q7CS1r9FUY6kSagUaAdLPMtY4MfKvG/eij2qcKqu7Ds=
 github.com/proactivity-lab/go-loggers v0.0.0-20180417085828-f892709079bd/go.mod h1:PgvbfPpF7oknORD8/LicJY9ehj/R03KPx4uf1YEpntc=
-github.com/proactivity-lab/go-moteconnection v0.0.0-20190124202812-5fb6cc229018 h1:UH+66chEfE83h9QYpKaxG6gtaLRow67y4FLBCVQdNYc=
-github.com/proactivity-lab/go-moteconnection v0.0.0-20190124202812-5fb6cc229018/go.mod h1:8n2moOa7BIHhPKrdahBQJ5N9svos7mGfiZIjmni3I4Q=
-github.com/proactivity-lab/go-moteconnection v0.0.0-20210831102411-eed25e406797 h1:sCx/mqVDWf453LIGDZpyj/VJKgKGY+ugFVOd4sGv1vQ=
-github.com/proactivity-lab/go-moteconnection v0.0.0-20210831102411-eed25e406797/go.mod h1:BRxushUC8cZFCfUyg1J8f8i3ppF9SXMdZM5KmoBeNeU=
 go.bug.st/serial.v1 v0.0.0-20191202182710-24a6610f0541 h1:eQfoPfT+gNSh63t/oKanQlZyKgblRa/LMZRPIT+MHzA=
 go.bug.st/serial.v1 v0.0.0-20191202182710-24a6610f0541/go.mod h1:dRSl/CVCTf56CkXgJMDOdSwNfo2g1orOGE/gBGdvjZw=
 golang.org/x/sys v0.0.0-20210320140829-1e4c9ba3b0c4 h1:EZ2mChiOa8udjfp6rRmswTbtZN/QzUQp4ptM4rnjHvc=

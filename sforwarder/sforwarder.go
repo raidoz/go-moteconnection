@@ -28,7 +28,7 @@ const ApplicationVersionMajor = 0
 const ApplicationVersionMinor = 0
 
 // ApplicationVersionPatch -
-const ApplicationVersionPatch = 1
+const ApplicationVersionPatch = 2
 
 // ApplicationBuildDate -
 var ApplicationBuildDate string
